@@ -65,10 +65,12 @@ const PlaceOrder = () => {
       return await checkout(orderDetailsToSend);
     },
     onSuccess: () => {
-      toast("Order placed successfully!");
-      navigate("/orders");
-      clearCart();
-      setIsProcessing(false);
+      toast("Order placed successfully You will receive an Email Shortly!");
+      setTimeout(() => {
+        navigate("/orders");
+        clearCart();
+        setIsProcessing(false);
+      }, 3000);
     },
     onError: () => {
       toast("Failed to place order. Please try again.");
