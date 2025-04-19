@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageLayout from "@/components/layout/PageLayout";
 import { useCart } from "@/contexts/CartContext";
@@ -11,39 +11,50 @@ import { CardContent, Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useMutation } from "@tanstack/react-query";
 import { checkout } from "@/services/orderService";
+import * as Dialog from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 
 const PlaceOrder = () => {
   const navigate = useNavigate();
   const { items, subtotal, clearCart, orderDetails } = useCart();
-
   const [cardDetails, setCardDetails] = useState({
     cardNumber: "",
     cardholderName: "",
     expiryDate: "",
     cvv: "",
   });
-
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isOrderSuccess, setIsOrderSuccess] = useState(false);
 
-  React.useEffect(() => {
+  // Auto-close dialog and navigate after 5 seconds
+  useEffect(() => {
+    if (isOrderSuccess) {
+      const timer = setTimeout(() => {
+        setIsOrderSuccess(false);
+        navigate("/orders");
+        clearCart();
+        setIsProcessing(false);
+      }, 5000); // 5 seconds
+      return () => clearTimeout(timer); // Cleanup timer
+    }
+  }, [isOrderSuccess, navigate, clearCart]);
+
+  useEffect(() => {
     if (items.length === 0) {
       navigate("/products");
     }
-  }, [items]);
+  }, [items, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    // Format card number with spaces
     if (name === "cardNumber") {
       const formattedValue = value
         .replace(/\s/g, "")
         .replace(/(\d{4})/g, "$1 ")
         .trim();
       setCardDetails((prev) => ({ ...prev, [name]: formattedValue }));
-    }
-    // Format expiry date with slash
-    else if (name === "expiryDate") {
+    } else if (name === "expiryDate") {
       const cleaned = value.replace(/\D/g, "");
       let formatted = cleaned;
 
@@ -59,18 +70,12 @@ const PlaceOrder = () => {
 
   const orderPlaceMutation = useMutation({
     mutationFn: async () => {
-      const orderDetailsToSend = {
-        ...orderDetails,
-      };
+      const orderDetailsToSend = { ...orderDetails };
       return await checkout(orderDetailsToSend);
     },
     onSuccess: () => {
-      toast("Order placed successfully You will receive an Email Shortly!");
-      setTimeout(() => {
-        navigate("/orders");
-        clearCart();
-        setIsProcessing(false);
-      }, 3000);
+      toast("Order placed successfully! You will receive an Email Shortly!");
+      setIsOrderSuccess(true); // Show dialog
     },
     onError: () => {
       toast("Failed to place order. Please try again.");
@@ -82,7 +87,6 @@ const PlaceOrder = () => {
     e.preventDefault();
     setIsProcessing(true);
     orderPlaceMutation.mutate();
-    toast("Order placed successfully!");
   };
 
   const breadcrumbSteps = [
@@ -105,7 +109,6 @@ const PlaceOrder = () => {
         <h1 className="text-3xl font-bold text-[#0A1E38] mb-8">Payment</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Payment Form */}
           <div className="lg:col-span-2">
             <Card>
               <CardContent className="pt-6">
@@ -204,7 +207,6 @@ const PlaceOrder = () => {
             </div>
           </div>
 
-          {/* Order Summary */}
           <div>
             <Card>
               <CardContent className="pt-6">
@@ -220,15 +222,6 @@ const PlaceOrder = () => {
                     >
                       <div className="flex items-start">
                         <div className="relative">
-                          <img
-                            src={
-                              // @ts-expect-error: Images array may be undefined
-                              item.product.images?.[0]?.url ||
-                              "/placeholder.svg"
-                            }
-                            alt={item.product.productName}
-                            className="w-14 h-14 object-cover rounded"
-                          />
                           <span className="absolute -top-2 -right-2 bg-[#0A1E38] text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
                             {item.quantity}
                           </span>
@@ -276,6 +269,52 @@ const PlaceOrder = () => {
             </Card>
           </div>
         </div>
+
+        <Dialog.Root
+          open={isOrderSuccess}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsOrderSuccess(false);
+              navigate("/orders");
+              clearCart();
+              setIsProcessing(false);
+            }
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+            <Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-[#22c55e] text-white rounded-lg p-6 w-full max-w-md z-50">
+              <div className="flex justify-between items-center mb-4">
+                <Dialog.Title className="text-xl font-bold">
+                  Order Successful
+                </Dialog.Title>
+                <Dialog.Close asChild>
+                  <Button
+                    variant="ghost"
+                    className="text-white hover:bg-green-600"
+                    aria-label="Close"
+                  >
+                    <X size={24} />
+                  </Button>
+                </Dialog.Close>
+              </div>
+              <Dialog.Description className="text-base">
+                Your order has been placed successfully! You will receive a
+                short email later with the details.
+              </Dialog.Description>
+              <div className="mt-6 flex justify-end">
+                <Dialog.Close asChild>
+                  <Button
+                    className="bg-white text-[#0A1E38] hover:bg-gray-100"
+                    onClick={() => navigate("/orders")}
+                  >
+                    View Orders
+                  </Button>
+                </Dialog.Close>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </div>
     </PageLayout>
   );
