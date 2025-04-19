@@ -27,6 +27,7 @@ const Orders = () => {
     queryFn: getUserOrders,
     enabled: isAuthenticated,
   });
+  console.log("Orders Dataaaaaaaaa", orders);
 
   return (
     <PageLayout>
@@ -77,6 +78,9 @@ const Orders = () => {
                       <p className="text-sm text-gray-600 mb-2">
                         Placed on{" "}
                         {format(new Date(order.createdAt), "MMMM dd, yyyy")}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-2">
+                        Eircode: {order.recipientEircode || "Not provided"}
                       </p>
                       <p className="font-medium text-[#0A1E38]">
                         ${order?.total}
